@@ -286,7 +286,7 @@ The following software technologies and development tools will be used in the pr
 | Backend | FastAPI |
 | Database | PostgreSQL 14+ |
 | Computer Vision | OpenCV |
-| AI/ML | Python-based deep learning/object detection framework |
+| AI/ML | Yolo-based object detection |
 | OCR | EasyOCR / Tesseract OCR, subject to evaluation |
 | API Testing | Postman |
 | IDE | Visual Studio Code |
@@ -312,11 +312,13 @@ Git and GitHub will be used for source-code management, branch-based development
 
 The AI/ML component is a mandatory part of the system and shall be responsible for detecting Nepali vehicle number plates from uploaded images.
 
-### AI-01: AI-Based Number Plate Detection
+### AI-01: YOLO-Based Number Plate Detection
 
-The system shall use a trained or fine-tuned object-detection model to identify and localize Nepali vehicle number plates within uploaded images.
+The system shall use a YOLO-based object detection model to identify and localize Nepali vehicle number plates within uploaded images.
 
-The model shall produce a bounding box indicating the detected plate region and a confidence score for the detection.
+The detector shall produce a bounding box surrounding the detected number plate and a confidence score indicating the confidence of the detection.
+
+The selected YOLO model version shall be determined during the model development and experimentation phase based on dataset compatibility, computational requirements, and evaluation results.
 
 ### AI-02: Dataset Requirement
 
@@ -358,21 +360,39 @@ The training process shall include appropriate configuration of:
 
 The final training configuration shall be documented.
 
-### AI-05: Training from Scratch or Fine-Tuning
+### AI-05: YOLO Model Training and Fine-Tuning
 
-The final training strategy shall be selected according to the project requirements and institutional guidelines.
+The YOLO-based number plate detector shall be trained or fine-tuned using the prepared Nepali vehicle number plate dataset.
 
-If pretrained weights are permitted, an appropriate pretrained model may be fine-tuned using the Nepali number plate dataset.
+Where permitted by the project guidelines, pretrained YOLO weights may be used as the starting point and fine-tuned on the project-specific dataset.
 
-If pretrained weights are not permitted, the selected model shall be trained from randomly initialized weights using the prepared dataset.
+The training process shall be documented, including:
 
-The selected approach and its justification shall be documented.
+- Selected YOLO model version
+- Initial model weights
+- Dataset configuration
+- Number of training epochs
+- Batch size
+- Image size
+- Learning rate and relevant hyperparameters
+- Training and validation results
+- Hardware used for training
 
-### AI-06: Model Evaluation
+If required by institutional guidelines, the project shall support training from randomly initialized weights instead of pretrained weights.
 
-The trained model shall be evaluated using an independent test dataset that is not used during model training.
+### AI-05A: Project-Specific Model
 
-Appropriate object-detection evaluation metrics may include:
+The final detection model used by the application shall be trained or fine-tuned specifically for Nepali vehicle number plate detection.
+
+The project shall not rely solely on an externally hosted detection API or an unmodified third-party model.
+
+The final model and its training configuration shall be documented as part of the AI Model Training and Evaluation Report.
+
+### AI-06: YOLO Model Evaluation
+
+The trained YOLO model shall be evaluated using an independent test dataset that is not used during model training.
+
+The evaluation shall include appropriate object-detection metrics such as:
 
 - Precision
 - Recall
@@ -380,7 +400,9 @@ Appropriate object-detection evaluation metrics may include:
 - Intersection over Union (IoU)
 - Mean Average Precision (mAP)
 
-The final evaluation results shall be documented and analyzed.
+The evaluation results shall be analyzed to identify strengths, weaknesses, and common detection errors.
+
+The final model selection shall be justified based on the experimental evaluation results.
 
 ### AI-07: OCR Recognition
 
