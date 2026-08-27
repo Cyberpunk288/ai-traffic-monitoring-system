@@ -1,0 +1,34 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Dataset files
+vehicle_number_plate_detection/images/
+vehicle_number_plate_detection/labels/
+
+# Generated files
+runs/
+outputs/
+results/
+
+# Environment variables
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Allow project utility script
+!vehicle_number_plate_detection/
+!vehicle_number_plate_detection/visualize_labels.py
