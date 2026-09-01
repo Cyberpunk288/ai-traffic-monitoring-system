@@ -29,6 +29,5 @@ results/
 .DS_Store
 Thumbs.db
 
-# Allow project utility script
-!vehicle_number_plate_detection/
-!vehicle_number_plate_detection/visualize_labels.py
+# Local vehicle plate dataset
+vehicle_number_plate_detection/
