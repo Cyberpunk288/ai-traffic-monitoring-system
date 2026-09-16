@@ -1,0 +1,9 @@
+path: C:/FYP/datasets/vehicle_plate_dataset/vehicle_number_plate_detection/dataset
+
+train: images/train
+val: images/val
+test: images/test
+
+nc: 1
+names:
+  0: license_plate

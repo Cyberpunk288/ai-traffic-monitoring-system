@@ -83,3 +83,34 @@ training dataset.
 | Suitable for YOLO training | Pending |
 | Suitable for OCR | Pending |
 | Final decision | Pending |
+
+
+## Dataset Preparation and Verification
+
+The selected dataset was prepared for YOLO-based vehicle number plate detection.
+
+### Dataset Split
+
+| Split | Images | Labels | Percentage |
+|---|---:|---:|---:|
+| Train | 5,654 | 5,654 | 70% |
+| Validation | 1,615 | 1,615 | 20% |
+| Test | 809 | 809 | 10% |
+| **Total** | **8,078** | **8,078** | **100%** |
+
+The dataset contains one detection class:
+
+- Class 0: `license_plate`
+
+### Dataset Structure
+
+```text
+dataset/
+├── images/
+│   ├── train/
+│   ├── val/
+│   └── test/
+└── labels/
+    ├── train/
+    ├── val/
+    └── test/
