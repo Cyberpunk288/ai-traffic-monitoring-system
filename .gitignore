@@ -31,3 +31,7 @@ Thumbs.db
 
 # Local vehicle plate dataset
 vehicle_number_plate_detection/
+
+# Frontend dependencies and build output
+node_modules/
+frontend/dist/
