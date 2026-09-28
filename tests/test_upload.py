@@ -22,7 +22,7 @@ def upload(filename, contents):
         "Content-Type": f"multipart/form-data; boundary={boundary}",
     })
     try:
-        response = urlopen(request, timeout=15)
+        response = urlopen(request, timeout=60)
     except HTTPError as error:
         response = error
     with response:
@@ -47,7 +47,10 @@ class UploadTests(unittest.TestCase):
             result["grayscale_image"].split(",", 1)[1]), np.uint8), cv2.IMREAD_UNCHANGED)
         self.assertEqual(grayscale.shape, (40, 80))
         self.assertTrue(np.all(grayscale == 76))
-        self.assertNotIn("detections", result)
+        self.assertEqual(result["detection_count"], len(result["detections"]))
+        annotated = cv2.imdecode(np.frombuffer(base64.b64decode(
+            result["annotated_image"].split(",", 1)[1]), np.uint8), cv2.IMREAD_COLOR)
+        self.assertEqual(annotated.shape, image.shape)
         self.assertNotIn("plate_text", result)
 
     def test_jpeg_and_resized_preview(self):

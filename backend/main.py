@@ -1,17 +1,31 @@
-"""Image upload and real OpenCV preprocessing for the mid-defense demo."""
+"""Image upload, preprocessing, and trained YOLO license plate detection."""
 
 import base64
 from pathlib import Path
+from threading import Lock
 
 import cv2
 import numpy as np
 from fastapi import FastAPI, HTTPException, UploadFile
+from ultralytics import YOLO
 
-app = FastAPI(title="Nepali Vehicle Number Plate — Upload Prototype")
+app = FastAPI(title="Nepali Vehicle Number Plate - Upload Prototype")
+
+# Load once per backend process, independently of the working directory.
+MODEL_PATH = Path(__file__).resolve().parents[1] / "ai" / "models" / "best.pt"
+model = YOLO(str(MODEL_PATH))
+inference_lock = Lock()
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
 PREVIEW_MAX_SIDE = 1200
+
+
+def png_data_url(image):
+    success, encoded = cv2.imencode(".png", image)
+    if not success:
+        raise HTTPException(500, "Could not encode a detection image.")
+    return "data:image/png;base64," + base64.b64encode(encoded).decode("ascii")
 
 
 @app.get("/api/health")
@@ -64,12 +78,43 @@ def process_image(file: UploadFile):
         if not success:
             raise HTTPException(500, "Could not generate the grayscale preview.")
 
+        # FastAPI can run uploads concurrently; protect the shared predictor.
+        with inference_lock:
+            result = model.predict(source=image, conf=0.25, save=False, verbose=False)[0]
+
+        detections = []
+        annotated = image.copy()
+        for box in result.boxes:
+            coordinates = box.xyxy[0].tolist()
+            # Round outward and clip to the image for safe, nonempty crops.
+            x1 = max(0, min(width, int(np.floor(coordinates[0]))))
+            y1 = max(0, min(height, int(np.floor(coordinates[1]))))
+            x2 = max(0, min(width, int(np.ceil(coordinates[2]))))
+            y2 = max(0, min(height, int(np.ceil(coordinates[3]))))
+            if x2 <= x1 or y2 <= y1:
+                continue
+            confidence = float(box.conf[0])
+            class_name = result.names[int(box.cls[0])]
+            detections.append({
+                "class_name": class_name,
+                "confidence": confidence,
+                "bbox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
+                "cropped_image": png_data_url(image[y1:y2, x1:x2]),
+            })
+            cv2.rectangle(annotated, (x1, y1), (x2 - 1, y2 - 1), (0, 255, 0), 2)
+            cv2.putText(annotated, f"{class_name} {confidence:.2f}",
+                        (x1, max(15, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 255, 0), 1, cv2.LINE_AA)
+
         return {
             "width": width,
             "height": height,
             "format": "PNG" if is_png else "JPEG",
             "size_bytes": len(contents),
             "grayscale_image": "data:image/png;base64," + base64.b64encode(encoded).decode("ascii"),
+            "detection_count": len(detections),
+            "detections": detections,
+            "annotated_image": png_data_url(annotated),
         }
     finally:
         file.file.close()
