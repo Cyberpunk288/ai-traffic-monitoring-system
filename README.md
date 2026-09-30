@@ -1,129 +1,153 @@
 # AI-Based Nepali Vehicle Number Plate Detection and Recognition System
 
-## Mid-defense prototype
+A Final Year Project that detects Nepali vehicle number plates from uploaded images using YOLOv8n, performs OCR using EasyOCR with OpenCV preprocessing, and stores detection history in SQLite.
 
-This prototype demonstrates a React image-upload interface connected to FastAPI.
-It accepts JPG/JPEG and PNG images, validates and decodes them using OpenCV,
-returns the original width and height, and displays a genuine grayscale preview.
-The preview's longest side is limited to 1,200 pixels for display; the reported
-dimensions belong to the original decoded image.
+## Features
 
-The interface explicitly shows:
+- Upload JPG/PNG vehicle images
+- Detect one or multiple number plates
+- Automatic plate cropping
+- YOLOv8n plate detection
+- OpenCV skew-aware preprocessing
+- EasyOCR with Devanagari support
+- OCR confidence and uncertainty status
+- Annotated detection output
+- Detection history stored in SQLite
+- React frontend with FastAPI backend
 
-- **YOLO detection: Pending model training**
-- **OCR recognition: Pending integration**
+## System Pipeline
 
-No detection, automatic plate cropping, OCR, database, or authentication is
-implemented. An image may contain one or multiple plates, but this version only
-preprocesses the whole image. It does not return boxes, plate text, or confidence
-scores. Uploaded images and results are not persistently saved. FastAPI may
-temporarily spool large multipart uploads to the system temporary directory;
-the upload is closed after each request. The dataset is never modified.
+React Frontend
+→ FastAPI Backend
+→ YOLOv8n Detection
+→ Plate Cropping
+→ OpenCV Preprocessing
+→ EasyOCR
+→ SQLite History
+→ Results Display
 
-## Required software and dependencies
+## Technology Stack
 
-- Use the existing Python virtual environment. Its Python version is 3.14.5.
-- Python packages: FastAPI (API), Uvicorn (server), python-multipart (uploads),
-  NumPy (image byte array), and opencv-python (decode and grayscale conversion).
-  OpenCV and NumPy were already present. The other three packages have been
-  installed into `.venv`. Package managers also install their required dependencies.
-- Install **Node.js 24 LTS for Windows**, including npm, from
-  <https://nodejs.org/en/download> if Node.js is not installed. Close and reopen
-  your terminal after installing it. You do not need to recreate `.venv`.
-- Frontend packages: React and React DOM; Vite is the development/build tool.
-  No UI library, router, or additional React build plugin is used.
+### Frontend
+- React.js
+- Vite
+- JavaScript
+- CSS
 
-The local setup was verified with the normally installed Windows Node.js
-24.21.0 and npm 11.19.0. No portable Node.js runtime is used.
+### Backend
+- Python
+- FastAPI
+- Uvicorn
 
-## Run locally on Windows (PowerShell)
+### AI / Computer Vision
+- YOLOv8n
+- Ultralytics
+- OpenCV
+- EasyOCR
+- NumPy
+- PyTorch
 
-Keep two terminals open. Start the backend first.
+### Database
+- SQLite
 
-### Terminal 1: backend
+SQLite is currently used as local prototype persistence. PostgreSQL was originally intended, but local PostgreSQL initialization was blocked by Windows Application Control.
 
-```powershell
-cd C:\FYP\ai-traffic-monitoring-system
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
-```
+## Dataset
 
-The explicit Python path uses your existing environment even if the terminal is
-not activated. The install command is only needed for initial setup or dependency
-changes. If your environment is activated, `python` can replace that path.
+Total dataset:
+- Images: 8,078
+- YOLO label files: 8,078
 
-- Health check: <http://127.0.0.1:8000/api/health>
-- Interactive API documentation: <http://127.0.0.1:8000/docs>
+Dataset split:
+- Training: 5,654
+- Validation: 1,615
+- Test: 809
 
-### Terminal 2: frontend
+Dataset validation:
+- Missing labels: 0
+- Labels without images: 0
+- Invalid annotations: 0
+- Invalid class IDs: 0
+- Invalid coordinates: 0
+- Corrupted images: 0
 
-After installing Node.js, open a **new** PowerShell terminal:
+## YOLO Training
 
-```powershell
-cd C:\FYP\ai-traffic-monitoring-system\frontend
-node --version
-npm.cmd --version
-npm.cmd install
-npm.cmd run dev
-```
+Model:
+- YOLOv8n
+- Pretrained model fine-tuned using transfer learning
+- 100 epochs
+- Training environment: Google Colab T4 GPU
 
-Open <http://127.0.0.1:5173>. Use `npm.cmd` to avoid PowerShell execution-policy
-errors involving `npm.ps1`. `npm.cmd install` is needed only for initial setup or
-dependency changes. `frontend/package-lock.json` records the resolved versions.
+### Detection Results
 
-Vite forwards `/api` requests to FastAPI on port 8000. Both servers must be running.
-The frontend uses port 5173 and reports an error if it is occupied. Press Ctrl+C
-in each terminal to stop the servers.
+Held-out test set:
+- 809 images
+- 879 number plate instances
 
-## Short demo sequence
+Metrics:
+- Precision: 97.1%
+- Recall: 95.7%
+- mAP@0.5: 98.9%
+- mAP@0.5:0.95: 92.8%
+- Inference: 2.9 ms/image on Google Colab T4
 
-1. Open the frontend and point out the two pending AI stages.
-2. Select a real JPG or PNG vehicle image and show the original preview.
-3. Click **Upload / Process Image**.
-4. Show the width, height, format, and OpenCV grayscale result.
-5. Explain that the next stage is training YOLO, followed by automatic plate
-   cropping and OCR integration.
+These metrics evaluate number plate detection only and are not OCR accuracy.
 
-Files must be at most 10 MB and decoded images at most 20 megapixels. The backend
-checks the extension, JPEG/PNG signature, and whether OpenCV can actually decode
-the file. Image validation does not verify that an image contains a vehicle.
+## OCR
 
-## Simple code walkthrough for the viva
+OCR pipeline:
+1. YOLO detects the plate
+2. Plate is automatically cropped
+3. Skew is estimated using OpenCV
+4. Reliable skew is corrected
+5. Crop is enlarged
+6. Converted to grayscale
+7. EasyOCR performs recognition
 
-- `frontend/src/App.jsx`: handles file selection, local preview, upload using
-  `FormData`, loading/errors, and results.
-- `frontend/vite.config.js`: connects the frontend development server to FastAPI.
-- `backend/main.py`: implements `GET /api/health` and `POST /api/process`.
-  The upload field is named `file`. OpenCV decodes the bytes, reads `image.shape`,
-  optionally resizes the preview, and converts BGR color to grayscale.
-- The grayscale image is encoded as PNG and returned as a base64 data URL so
-  React can display it without a saved image file or another download endpoint.
+OCR confidence is displayed separately from recognition correctness.
 
-## Verification
+### OCR Evaluation
 
-Verified on this machine: the frontend production build passes, the development
-server serves the page, and all five upload tests pass through Vite's API proxy
-to FastAPI. Automated visual browser verification was unavailable; manually
-follow the short demo sequence above to check the rendered interface.
+A manually verified eight-image evaluation set was used.
 
-With the backend running on port 8000, run from the repository root:
+Baseline mean Character Error Rate:
+- 90.66%
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
+Selected skew-aware preprocessing:
+- Mean CER: 73.88%
 
-The tests use Python's standard library, NumPy, and OpenCV; no separate testing
-package is needed. They check the health endpoint, real PNG/JPEG uploads,
-dimensions, grayscale pixel values, preview resizing, missing uploads, invalid
-formats, corrupted files, empty files, and the 10 MB limit. Test images are made
-in memory, without reading or changing the dataset.
+Improvement:
+- 16.78 percentage-point CER reduction
+- Improved: 7/8 images
+- Tied: 1/8
+- Worsened: 0/8
 
-To check the frontend build:
+Exact full-plate matches:
+- 0/8
 
-```powershell
-cd C:\FYP\ai-traffic-monitoring-system\frontend
-npm.cmd run build
-```
+OCR therefore remains a limitation of the current system.
 
-The build writes ignored output into `frontend/dist/`. The documented demo uses
-the Vite development server and its API proxy; production hosting is not configured.
+## Database
+
+Table:
+
+`detection_history`
+
+Fields:
+- `id`
+- `filename`
+- `plate_text`
+- `detection_confidence`
+- `ocr_confidence`
+- `ocr_status`
+- `created_at`
+
+Uploaded original image files are not permanently stored.
+
+## API Endpoints
+
+### Health Check
+
+```text
+GET /api/health
