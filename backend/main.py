@@ -44,6 +44,42 @@ MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
 PREVIEW_MAX_SIDE = 1200
 
+
+def rotate_image(image, angle):
+    """Expand the canvas instead of clipping the original crop."""
+    h, w = image.shape[:2]
+    matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1)
+    c, s = abs(matrix[0, 0]), abs(matrix[0, 1])
+    nw, nh = int(np.ceil(w*c+h*s)), int(np.ceil(h*c+w*s))
+    matrix[:, 2] += ((nw-w)/2, (nh-h)/2)
+    return cv2.warpAffine(image, matrix, (nw, nh), flags=cv2.INTER_CUBIC,
+                          borderMode=cv2.BORDER_REPLICATE)
+
+
+def estimate_skew(image):
+    """Use the experiment's weighted median of near-horizontal edges."""
+    g = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+    h, w = g.shape
+    edges = cv2.Canny(g, 50, 150)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, max(15, w//10),
+                            minLineLength=max(12, w//6), maxLineGap=w//25)
+    candidates = []
+    if lines is not None:
+        for x1, y1, x2, y2 in np.asarray(lines).reshape(-1, 4):
+            angle = (np.degrees(np.arctan2(y2-y1, x2-x1))+90) % 180-90
+            if abs(angle) <= 20:
+                candidates.append((float(angle), float(np.hypot(x2-x1, y2-y1))))
+    if len(candidates) < 2:
+        return 0.0, {"status": "insufficient edges; using zero", "edges": candidates}
+    candidates.sort()
+    angles, weights = np.array(candidates).T
+    angle = float(angles[np.searchsorted(np.cumsum(weights), weights.sum()/2)])
+    spread = float(np.average(np.abs(angles-angle), weights=weights))
+    return (angle if spread <= 6 else 0.0), {
+        "status": "candidate" if spread <= 6 else "inconsistent edges; using zero",
+        "median_angle": angle, "spread": spread, "edges": candidates}
+
+
 def recognize_plate_text(plate_image):
     """Run EasyOCR on a detected plate crop and return text with confidence."""
 
@@ -54,6 +90,10 @@ def recognize_plate_text(plate_image):
             "status": "uncertain",
         }
 
+    angle, skew_info = estimate_skew(plate_image)
+    if skew_info["status"] == "candidate":
+        plate_image = rotate_image(plate_image, angle - 4.0)
+
     # Enlarge small plate crops before OCR.
     enlarged = cv2.resize(
         plate_image,
@@ -63,7 +103,6 @@ def recognize_plate_text(plate_image):
         interpolation=cv2.INTER_CUBIC,
     )
 
-    # Grayscale gives OCR a simpler input.
     grayscale = cv2.cvtColor(enlarged, cv2.COLOR_BGR2GRAY)
 
     with ocr_lock:

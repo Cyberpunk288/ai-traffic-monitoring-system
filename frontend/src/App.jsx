@@ -90,7 +90,7 @@ export default function App() {
   return (
     <main>
       <header>
-        <p className="eyebrow">FINAL YEAR PROJECT · SYSTEM PROTOTYPE</p>
+        <p className="eyebrow">FINAL YEAR PROJECT · AI-POWERED NUMBER PLATE RECOGNITION</p>
         <h1>AI-Based Nepali Vehicle Number Plate Detection and Recognition System</h1>
         <p className="intro">
           Upload a vehicle image to detect Nepali license plates with YOLO,
@@ -99,10 +99,11 @@ export default function App() {
         </p>
       </header>
 
-      <section className="pipeline" aria-label="Development status">
-        <span className="ready">Image upload &amp; preprocessing: Available</span>
-        <span className="ready">YOLO plate detection: Available</span>
-        <span className="ready">EasyOCR recognition: Available</span>
+        <section className="pipeline" aria-label="System components">
+        <span className="ready">Image Upload &amp; Preprocessing</span>
+        <span className="ready">YOLO Plate Detection</span>
+        <span className="ready">EasyOCR Recognition</span>
+        <span className="ready">SQLite Detection History</span>
       </section>
 
       <section className="card">
@@ -232,7 +233,7 @@ export default function App() {
                   <th>Detection Confidence</th>
                   <th>OCR Confidence</th>
                   <th>OCR Status</th>
-                  <th>Saved At</th>
+                 <th>Saved At (NPT)</th>
                 </tr>
               </thead>
 
@@ -261,7 +262,21 @@ export default function App() {
                         : 'Uncertain'}
                     </td>
 
-                    <td>{record.created_at}</td>
+                    <td>
+                {new Date(record.created_at.replace(' ', 'T') + 'Z').toLocaleString(
+                  'en-GB',
+                  {
+                    timeZone: 'Asia/Kathmandu',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
+                  }
+                )}
+              </td>
                   </tr>
                 ))}
               </tbody>
@@ -274,14 +289,12 @@ export default function App() {
         )}
       </section>
 
-      <footer>
-              <footer>
+         <footer>
         This system demonstrates YOLO plate detection, automatic plate cropping,
         OpenCV preprocessing, EasyOCR character recognition, and SQLite-based
         detection history. Low-confidence OCR results are marked as uncertain.
         Uploaded image files are not stored; only detection metadata and OCR
         results are saved in the local database.
-      </footer>
       </footer>
     </main>
   );
