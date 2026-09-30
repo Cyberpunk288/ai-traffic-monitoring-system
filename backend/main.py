@@ -19,7 +19,15 @@ import easyocr
 from fastapi import FastAPI, HTTPException, UploadFile
 from ultralytics import YOLO
 
+from backend.database import (
+    get_detection_history,
+    initialize_database,
+    save_detection,
+)
+
 app = FastAPI(title="Nepali Vehicle Number Plate - Upload Prototype")
+
+initialize_database()
 
 # Load once per backend process, independently of the working directory.
 MODEL_PATH = Path(__file__).resolve().parents[1] / "ai" / "models" / "best.pt"
@@ -115,6 +123,13 @@ def png_data_url(image):
 def health():
     return {"status": "ok"}
 
+@app.get("/api/history")
+def history():
+    """Return the most recent saved plate detection records."""
+    return {
+        "records": get_detection_history(limit=50)
+    }
+
 
 @app.post("/api/process")
 def process_image(file: UploadFile):
@@ -182,12 +197,20 @@ def process_image(file: UploadFile):
             plate_crop = image[y1:y2, x1:x2]
             ocr_result = recognize_plate_text(plate_crop)
 
+            save_detection(
+                filename=file.filename or "unknown",
+                plate_text=ocr_result["text"],
+                detection_confidence=confidence,
+                ocr_confidence=ocr_result["confidence"],
+                ocr_status=ocr_result["status"],
+            )
+
 
             detections.append({
                 "class_name": class_name,
                 "confidence": confidence,
                 "bbox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
-                "cropped_image": png_data_url(image[y1:y2, x1:x2]),
+                "cropped_image": png_data_url(plate_crop),
                  "ocr": ocr_result,
             })
             cv2.rectangle(annotated, (x1, y1), (x2 - 1, y2 - 1), (0, 255, 0), 2)

@@ -6,6 +6,24 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  async function loadHistory() {
+  try {
+    const response = await fetch('/api/history');
+    if (!response.ok) return;
+
+    const data = await response.json();
+    setHistory(data.records || []);
+  } catch {
+    // Keep the main image-processing workflow usable
+    // even if history cannot be loaded.
+  }
+}
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   useEffect(() => {
     if (!file) {
@@ -57,6 +75,7 @@ export default function App() {
       }
       if (!data) throw new Error('The backend returned an invalid response.');
       setResult(data);
+      await loadHistory();
     } catch (err) {
       setError(err.name === 'TimeoutError'
         ? 'The request timed out. Please check the backend and try again.'
@@ -198,10 +217,71 @@ export default function App() {
           </p>
         </article>
       </section>
+
+              <section className="card">
+        <h2>Detection History</h2>
+
+        {history.length > 0 ? (
+          <div className="history-wrapper">
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Image</th>
+                  <th>Recognized Text</th>
+                  <th>Detection Confidence</th>
+                  <th>OCR Confidence</th>
+                  <th>OCR Status</th>
+                  <th>Saved At</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {history.map((record) => (
+                  <tr key={record.id}>
+                    <td>{record.id}</td>
+
+                    <td>{record.filename}</td>
+
+                    <td>
+                      {record.plate_text || 'No text recognized'}
+                    </td>
+
+                    <td>
+                      {(record.detection_confidence * 100).toFixed(1)}%
+                    </td>
+
+                    <td>
+                      {(record.ocr_confidence * 100).toFixed(1)}%
+                    </td>
+
+                    <td>
+                      {record.ocr_status === 'recognized'
+                        ? 'Recognized'
+                        : 'Uncertain'}
+                    </td>
+
+                    <td>{record.created_at}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">
+            No detection history has been saved yet.
+          </p>
+        )}
+      </section>
+
       <footer>
+              <footer>
         This system demonstrates YOLO plate detection, automatic plate cropping,
-        OpenCV preprocessing, and EasyOCR character recognition. Low-confidence
-        OCR results are marked as uncertain. Uploaded images are not saved by this application.
+        OpenCV preprocessing, EasyOCR character recognition, and SQLite-based
+        detection history. Low-confidence OCR results are marked as uncertain.
+        Uploaded image files are not stored; only detection metadata and OCR
+        results are saved in the local database.
+      </footer>
       </footer>
     </main>
   );

@@ -51,3 +51,47 @@ footer { color: #65736c; font-size: 13px; margin: 24px 0 0; max-width: 850px; }
   .card { padding: 20px; }
   .metadata { gap: 20px; }
 }
+.history-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.history-table th,
+.history-table td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #d9dfdc;
+  vertical-align: top;
+}
+
+.history-table th {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.history-table td {
+  min-width: 120px;
+}
+
+.history-table td:nth-child(1) {
+  min-width: 40px;
+}
+
+.history-table td:nth-child(2) {
+  min-width: 210px;
+}
+
+.history-table td:nth-child(3) {
+  min-width: 180px;
+}
+
+.history-table td:last-child {
+  min-width: 180px;
+  white-space: nowrap;
+} 
