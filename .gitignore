@@ -42,3 +42,6 @@ ocr_experiment_output/
 
 # Local SQLite runtime database
 backend/plate_history.db
+
+# Vite cache
+frontend/.vite/
