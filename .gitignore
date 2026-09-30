@@ -35,3 +35,6 @@ vehicle_number_plate_detection/
 # Frontend dependencies and build output
 node_modules/
 frontend/dist/
+
+# OCR experiment outputs
+ocr_experiment_output/

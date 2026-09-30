@@ -6,6 +6,16 @@ from threading import Lock
 
 import cv2
 import numpy as np
+
+# Compatibility for the pure-Python python-bidi 0.4.2 package.
+# EasyOCR expects get_display to be available directly from bidi.
+import bidi
+from bidi.algorithm import get_display
+
+if not hasattr(bidi, "get_display"):
+    bidi.get_display = get_display
+
+import easyocr
 from fastapi import FastAPI, HTTPException, UploadFile
 from ultralytics import YOLO
 
@@ -13,12 +23,85 @@ app = FastAPI(title="Nepali Vehicle Number Plate - Upload Prototype")
 
 # Load once per backend process, independently of the working directory.
 MODEL_PATH = Path(__file__).resolve().parents[1] / "ai" / "models" / "best.pt"
+
 model = YOLO(str(MODEL_PATH))
+
+# Load EasyOCR once when the backend starts.
+ocr_reader = easyocr.Reader(["ne"], gpu=False)
+
 inference_lock = Lock()
+ocr_lock = Lock()
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
 PREVIEW_MAX_SIDE = 1200
+
+def recognize_plate_text(plate_image):
+    """Run EasyOCR on a detected plate crop and return text with confidence."""
+
+    if plate_image is None or plate_image.size == 0:
+        return {
+            "text": None,
+            "confidence": 0.0,
+            "status": "uncertain",
+        }
+
+    # Enlarge small plate crops before OCR.
+    enlarged = cv2.resize(
+        plate_image,
+        None,
+        fx=4,
+        fy=4,
+        interpolation=cv2.INTER_CUBIC,
+    )
+
+    # Grayscale gives OCR a simpler input.
+    grayscale = cv2.cvtColor(enlarged, cv2.COLOR_BGR2GRAY)
+
+    with ocr_lock:
+        results = ocr_reader.readtext(
+            grayscale,
+            detail=1,
+            paragraph=False,
+        )
+
+    if not results:
+        return {
+            "text": None,
+            "confidence": 0.0,
+            "status": "uncertain",
+        }
+
+    # Keep the detected pieces in EasyOCR's returned order.
+    text_parts = []
+    confidences = []
+
+    for result in results:
+        text = result[1].strip()
+        confidence = float(result[2])
+
+        if text:
+            text_parts.append(text)
+            confidences.append(confidence)
+
+    if not text_parts:
+        return {
+            "text": None,
+            "confidence": 0.0,
+            "status": "uncertain",
+        }
+
+    combined_text = " ".join(text_parts)
+    average_confidence = sum(confidences) / len(confidences)
+
+    # Do not present weak OCR as a trustworthy plate number.
+    status = "recognized" if average_confidence >= 0.50 else "uncertain"
+
+    return {
+        "text": combined_text,
+        "confidence": average_confidence,
+        "status": status,
+    }
 
 
 def png_data_url(image):
@@ -95,11 +178,17 @@ def process_image(file: UploadFile):
                 continue
             confidence = float(box.conf[0])
             class_name = result.names[int(box.cls[0])]
+
+            plate_crop = image[y1:y2, x1:x2]
+            ocr_result = recognize_plate_text(plate_crop)
+
+
             detections.append({
                 "class_name": class_name,
                 "confidence": confidence,
                 "bbox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
                 "cropped_image": png_data_url(image[y1:y2, x1:x2]),
+                 "ocr": ocr_result,
             })
             cv2.rectangle(annotated, (x1, y1), (x2 - 1, y2 - 1), (0, 255, 0), 2)
             cv2.putText(annotated, f"{class_name} {confidence:.2f}",
